@@ -3,6 +3,7 @@ package com.tenant_management.service;
 import com.tenant_management.dto.TenantOverviewResponse;
 import com.tenant_management.dto.TenantResponse;
 import com.tenant_management.entity.Tenant;
+import com.tenant_management.exception.TenantNotFoundException;
 import com.tenant_management.repository.TenantRepository;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,6 @@ public class TenantService {
         this.tenantRepository = tenantRepository;
     }
 
-    // Get all tenants
     public List<TenantResponse> getAllTenants() {
         return tenantRepository.findAll()
                 .stream()
@@ -26,16 +26,14 @@ public class TenantService {
                 .toList();
     }
 
-    // Get tenant by Tenant ID
     public TenantResponse getTenantByTenantId(String tenantId) {
         return tenantRepository.findByTenantId(tenantId)
                 .filter(tenant -> !tenant.isDeleted())
                 .map(this::mapToResponse)
                 .orElseThrow(() ->
-                        new RuntimeException("Tenant not found: " + tenantId));
+                        new TenantNotFoundException(tenantId));
     }
 
-    // Search tenants by Tenant Name or Tenant ID
     public List<TenantResponse> searchTenants(String search) {
         return tenantRepository
                 .findByTenantNameContainingIgnoreCaseOrTenantIdContainingIgnoreCase(
@@ -48,7 +46,6 @@ public class TenantService {
                 .toList();
     }
 
-    // Filter tenants by status
     public List<TenantResponse> filterByStatus(String status) {
         return tenantRepository.findByStatus(status)
                 .stream()
@@ -57,7 +54,6 @@ public class TenantService {
                 .toList();
     }
 
-    // Filter tenants by subscription plan
     public List<TenantResponse> filterBySubscriptionPlan(String subscriptionPlan) {
         return tenantRepository.findBySubscriptionPlan(subscriptionPlan)
                 .stream()
@@ -66,7 +62,6 @@ public class TenantService {
                 .toList();
     }
 
-    // Filter tenants by country / region
     public List<TenantResponse> filterByCountry(String country) {
         return tenantRepository.findByCountry(country)
                 .stream()
@@ -75,7 +70,6 @@ public class TenantService {
                 .toList();
     }
 
-    // Get tenant overview
     public TenantOverviewResponse getTenantOverview() {
 
         List<Tenant> tenants = tenantRepository.findAll()
@@ -86,11 +80,13 @@ public class TenantService {
         long totalTenants = tenants.size();
 
         long activeTenants = tenants.stream()
-                .filter(tenant -> "Active".equalsIgnoreCase(tenant.getStatus()))
+                .filter(tenant ->
+                        "Active".equalsIgnoreCase(tenant.getStatus()))
                 .count();
 
         long inactiveTenants = tenants.stream()
-                .filter(tenant -> "Inactive".equalsIgnoreCase(tenant.getStatus()))
+                .filter(tenant ->
+                        "Inactive".equalsIgnoreCase(tenant.getStatus()))
                 .count();
 
         return new TenantOverviewResponse(
@@ -100,8 +96,8 @@ public class TenantService {
         );
     }
 
-    // Convert Tenant entity to TenantResponse
     private TenantResponse mapToResponse(Tenant tenant) {
+
         return new TenantResponse(
                 tenant.getTenantId(),
                 tenant.getTenantName(),
