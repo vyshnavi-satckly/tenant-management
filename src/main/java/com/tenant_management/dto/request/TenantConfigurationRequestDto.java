@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class TenantConfigurationRequest {
+public class TenantConfigurationRequestDto {
 
     @NotBlank(message = "Country is required")
     private String country;

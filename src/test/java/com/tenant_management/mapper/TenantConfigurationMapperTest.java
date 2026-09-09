@@ -1,7 +1,7 @@
 package com.tenant_management.mapper;
 
-import com.tenant_management.dto.request.TenantConfigurationRequest;
-import com.tenant_management.dto.response.TenantConfigurationResponse;
+import com.tenant_management.dto.request.TenantConfigurationRequestDto;
+import com.tenant_management.dto.response.TenantConfigurationResponseDto;
 import com.tenant_management.entity.TenantConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +15,7 @@ class TenantConfigurationMapperTest {
 
     @Test
     void toEntity_shouldMapAllFieldsCorrectly() {
-        TenantConfigurationRequest request = new TenantConfigurationRequest();
+        TenantConfigurationRequestDto request = new TenantConfigurationRequestDto();
         request.setCountry("India");
         request.setTimeZone("Asia/Kolkata");
         request.setLanguage("en");
@@ -68,7 +68,7 @@ class TenantConfigurationMapperTest {
                 .updatedAt(now)
                 .build();
 
-        TenantConfigurationResponse response = TenantConfigurationMapper.toResponse(entity);
+        TenantConfigurationResponseDto response = TenantConfigurationMapper.toResponse(entity);
 
         assertThat(response.getId()).isEqualTo(id);
         assertThat(response.getTenantId()).isEqualTo(tenantId);

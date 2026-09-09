@@ -20,8 +20,8 @@ class TenantConfigurationRequestValidationTest {
         this.validator = factory.getValidator();
     }
 
-    private TenantConfigurationRequest validRequest() {
-        TenantConfigurationRequest request = new TenantConfigurationRequest();
+    private TenantConfigurationRequestDto validRequest() {
+        TenantConfigurationRequestDto request = new TenantConfigurationRequestDto();
         request.setCountry("India");
         request.setTimeZone("Asia/Kolkata");
         request.setLanguage("en");
@@ -37,43 +37,43 @@ class TenantConfigurationRequestValidationTest {
 
     @Test
     void validRequest_shouldHaveNoViolations() {
-        Set<ConstraintViolation<TenantConfigurationRequest>> violations = validator.validate(validRequest());
+        Set<ConstraintViolation<TenantConfigurationRequestDto>> violations = validator.validate(validRequest());
         assertThat(violations).isEmpty();
     }
 
     @Test
     void sessionTimeoutBelowMinimum_shouldFailValidation() {
-        TenantConfigurationRequest request = validRequest();
+        TenantConfigurationRequestDto request = validRequest();
         request.setSessionTimeoutMinutes(3); // below minimum of 5
 
-        Set<ConstraintViolation<TenantConfigurationRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<TenantConfigurationRequestDto>> violations = validator.validate(request);
         assertThat(violations).isNotEmpty();
     }
 
     @Test
     void sessionTimeoutAboveMaximum_shouldFailValidation() {
-        TenantConfigurationRequest request = validRequest();
+        TenantConfigurationRequestDto request = validRequest();
         request.setSessionTimeoutMinutes(300); // above maximum of 240
 
-        Set<ConstraintViolation<TenantConfigurationRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<TenantConfigurationRequestDto>> violations = validator.validate(request);
         assertThat(violations).isNotEmpty();
     }
 
     @Test
     void storageLimitZero_shouldFailValidation() {
-        TenantConfigurationRequest request = validRequest();
+        TenantConfigurationRequestDto request = validRequest();
         request.setStorageLimitGb(BigDecimal.ZERO);
 
-        Set<ConstraintViolation<TenantConfigurationRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<TenantConfigurationRequestDto>> violations = validator.validate(request);
         assertThat(violations).isNotEmpty();
     }
 
     @Test
     void blankCountry_shouldFailValidation() {
-        TenantConfigurationRequest request = validRequest();
+        TenantConfigurationRequestDto request = validRequest();
         request.setCountry("");
 
-        Set<ConstraintViolation<TenantConfigurationRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<TenantConfigurationRequestDto>> violations = validator.validate(request);
         assertThat(violations).isNotEmpty();
     }
 }

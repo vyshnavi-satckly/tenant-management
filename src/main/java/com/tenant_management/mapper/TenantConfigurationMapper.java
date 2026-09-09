@@ -1,7 +1,7 @@
 package com.tenant_management.mapper;
 
-import com.tenant_management.dto.request.TenantConfigurationRequest;
-import com.tenant_management.dto.response.TenantConfigurationResponse;
+import com.tenant_management.dto.request.TenantConfigurationRequestDto;
+import com.tenant_management.dto.response.TenantConfigurationResponseDto;
 import com.tenant_management.entity.TenantConfiguration;
 
 import java.util.UUID;
@@ -11,7 +11,7 @@ public class TenantConfigurationMapper {
     private TenantConfigurationMapper() {
     }
 
-    public static TenantConfiguration toEntity(TenantConfigurationRequest request, UUID tenantId) {
+    public static TenantConfiguration toEntity(TenantConfigurationRequestDto request, UUID tenantId) {
         return TenantConfiguration.builder()
                 .tenantId(tenantId)
                 .country(request.getCountry())
@@ -28,7 +28,7 @@ public class TenantConfigurationMapper {
                 .build();
     }
 
-    public static void updateEntity(TenantConfiguration entity, TenantConfigurationRequest request) {
+    public static void updateEntity(TenantConfiguration entity, TenantConfigurationRequestDto request) {
         entity.setCountry(request.getCountry());
         entity.setTimeZone(request.getTimeZone());
         entity.setLanguage(request.getLanguage());
@@ -42,8 +42,8 @@ public class TenantConfigurationMapper {
         entity.setSmsNotificationsEnabled(request.getSmsNotificationsEnabled());
     }
 
-    public static TenantConfigurationResponse toResponse(TenantConfiguration entity) {
-        return TenantConfigurationResponse.builder()
+    public static TenantConfigurationResponseDto toResponse(TenantConfiguration entity) {
+        return TenantConfigurationResponseDto.builder()
                 .id(entity.getId())
                 .tenantId(entity.getTenantId())
                 .country(entity.getCountry())
