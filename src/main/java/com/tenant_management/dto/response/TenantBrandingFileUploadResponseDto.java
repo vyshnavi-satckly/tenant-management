@@ -8,7 +8,6 @@ import lombok.*;
 
 public class TenantBrandingFileUploadResponseDto {
 
-    private String field;
     private String url;
     private String message;
 }
