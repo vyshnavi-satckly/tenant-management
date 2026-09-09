@@ -1,79 +1,37 @@
 package com.tenant_management.controller;
 
-import com.tenant_management.dto.TenantOverviewResponse;
-import com.tenant_management.dto.TenantResponse;
+import com.tenant_management.dto.request.CreateTenantRequest;
+import com.tenant_management.dto.request.UpdateTenantRequest;
+import com.tenant_management.entity.Tenant;
 import com.tenant_management.service.TenantService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/tenants")
 public class TenantController {
 
-    private final TenantService tenantService;
+    private final TenantService service;
+    public TenantController(TenantService service){this.service=service;}
 
-    public TenantController(TenantService tenantService) {
-        this.tenantService = tenantService;
+    @PostMapping public ResponseEntity<Tenant> create(@Valid @RequestBody CreateTenantRequest req){
+        return ResponseEntity.ok(service.createTenant(req));
     }
-
-    // GET /api/tenants
-    // Get all tenants
-    @GetMapping
-    public List<TenantResponse> getAllTenants() {
-        return tenantService.getAllTenants();
+    @PutMapping("/{tenantId}") public ResponseEntity<Tenant> update(@PathVariable String tenantId, @RequestBody UpdateTenantRequest req){
+        return ResponseEntity.ok(service.updateTenant(tenantId, req));
     }
-
-    // GET /api/tenants/{tenantId}
-    // Get tenant by Tenant ID
-    @GetMapping("/{tenantId}")
-    public TenantResponse getTenantByTenantId(
-            @PathVariable String tenantId) {
-
-        return tenantService.getTenantByTenantId(tenantId);
+    @PutMapping("/{tenantId}/enable") public ResponseEntity<Tenant> enable(@PathVariable String tenantId){
+        return ResponseEntity.ok(service.enableTenant(tenantId));
     }
-
-    // GET /api/tenants/search?query=value
-    // Search by Tenant Name or Tenant ID
-    @GetMapping("/search")
-    public List<TenantResponse> searchTenants(
-            @RequestParam String query) {
-
-        return tenantService.searchTenants(query);
+    @PutMapping("/{tenantId}/disable") public ResponseEntity<Tenant> disable(@PathVariable String tenantId){
+        return ResponseEntity.ok(service.disableTenant(tenantId));
     }
-
-    // GET /api/tenants/filter?status=Active
-    // GET /api/tenants/filter?subscriptionPlan=Premium
-    // GET /api/tenants/filter?country=India
-    @GetMapping("/filter")
-    public List<TenantResponse> filterTenants(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String subscriptionPlan,
-            @RequestParam(required = false) String country) {
-
-        if (status != null && !status.isBlank()) {
-            return tenantService.filterByStatus(status);
-        }
-
-        if (subscriptionPlan != null && !subscriptionPlan.isBlank()) {
-            return tenantService.filterBySubscriptionPlan(subscriptionPlan);
-        }
-
-        if (country != null && !country.isBlank()) {
-            return tenantService.filterByCountry(country);
-        }
-
-        return tenantService.getAllTenants();
+    @GetMapping("/export") public ResponseEntity<List<Tenant>> export(){
+        return ResponseEntity.ok(service.exportTenants());
     }
-
-    // GET /api/tenants/overview
-    // Get total, active and inactive tenant counts
-    @GetMapping("/overview")
-    public TenantOverviewResponse getTenantOverview() {
-        return tenantService.getTenantOverview();
-    }
+    // Team 1A APIs for testing - you can keep
+    @GetMapping public ResponseEntity<List<Tenant>> getAll(){return ResponseEntity.ok(service.getAllTenants());}
+    @GetMapping("/{tenantId}") public ResponseEntity<Tenant> getOne(@PathVariable String tenantId){return ResponseEntity.ok(service.getTenantById(tenantId));}
 }
