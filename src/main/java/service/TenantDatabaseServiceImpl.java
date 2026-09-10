@@ -15,6 +15,7 @@ import java.util.UUID;
 @Service
 @Transactional
 public class TenantDatabaseServiceImpl implements TenantDatabaseService {
+    private static final String SHARED_DATABASE_NAME = "cloud_platform";
     private final TenantDatabaseRepository tenantDatabaseRepository;
     private final TenantRepository tenants;
     private final DatabaseConnectionVerifier verifier;
@@ -40,8 +41,12 @@ public class TenantDatabaseServiceImpl implements TenantDatabaseService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tenant database not found"));
     }
 
-    private String databaseName(UUID tenantId) {
-        return "tenant_" + tenantId.toString().replace("-", "");
+    private TenantDatabase useSharedDatabase(TenantDatabase database) {
+        if (!SHARED_DATABASE_NAME.equals(database.getDatabaseName())) {
+            database.setDatabaseName(SHARED_DATABASE_NAME);
+            return tenantDatabaseRepository.save(database);
+        }
+        return database;
     }
 
     private void validate(TenantDatabaseRequest request, BigDecimal used) {
@@ -63,7 +68,7 @@ public class TenantDatabaseServiceImpl implements TenantDatabaseService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Tenant database already exists");
         TenantDatabase database = new TenantDatabase();
         database.setTenant(tenant);
-        database.setDatabaseName(databaseName(tenantId));
+        database.setDatabaseName(SHARED_DATABASE_NAME);
         database.setUsedStorageGb(BigDecimal.ZERO);
         database.setCreatedAt(LocalDateTime.now());
         return save(database, request, "DATABASE_CREATED");
@@ -71,7 +76,7 @@ public class TenantDatabaseServiceImpl implements TenantDatabaseService {
 
     @Override
     public TenantDatabaseResponse getDatabase(UUID tenantId) {
-        TenantDatabaseResponse response = convertToResponse(requireDatabase(tenantId));
+        TenantDatabaseResponse response = convertToResponse(useSharedDatabase(requireDatabase(tenantId)));
         events.publishEvent(new TenantDatabaseAuditEvent(tenantId, "DATABASE_VIEWED", true, LocalDateTime.now()));
         return response;
     }
@@ -87,12 +92,10 @@ public class TenantDatabaseServiceImpl implements TenantDatabaseService {
     private TenantDatabaseResponse save(TenantDatabase database, TenantDatabaseRequest request, String action) {
         BigDecimal used = database.getUsedStorageGb() == null ? BigDecimal.ZERO : database.getUsedStorageGb();
         validate(request, used);
-        String name = database.getDatabaseName() == null
-                ? databaseName(database.getTenant().getId()) : database.getDatabaseName();
-        DatabaseConnectionResult result = verifier.verify(request.getDatabaseType(), request.getServerName(), name);
+        DatabaseConnectionResult result = verifier.verify(request.getDatabaseType(), request.getServerName(), SHARED_DATABASE_NAME);
         if (!result.connected())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Connection verification failed; database settings were not saved");
-        database.setDatabaseName(name);
+        database.setDatabaseName(SHARED_DATABASE_NAME);
         database.setDatabaseType(request.getDatabaseType().trim().toUpperCase(java.util.Locale.ROOT));
         database.setServerName(request.getServerName().trim());
         database.setAllocatedStorageGb(request.getAllocatedStorageGb());
@@ -111,17 +114,17 @@ public class TenantDatabaseServiceImpl implements TenantDatabaseService {
     public DatabaseConnectionResult testConnection(UUID tenantId, TenantDatabaseRequest request) {
         requireTenant(tenantId);
         if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Connection settings are required");
-        String name = tenantDatabaseRepository.findByTenant_Id(tenantId).map(TenantDatabase::getDatabaseName)
-                .orElse(databaseName(tenantId));
-        DatabaseConnectionResult result = verifier.verify(request.getDatabaseType(), request.getServerName(), name);
+        DatabaseConnectionResult result = verifier.verify(
+                request.getDatabaseType(), request.getServerName(), SHARED_DATABASE_NAME);
         events.publishEvent(new TenantDatabaseAuditEvent(tenantId, "DATABASE_CONNECTION_TESTED", result.connected(), LocalDateTime.now()));
         return result;
     }
 
     @Override
     public TenantDatabaseHealthResponse getHealth(UUID tenantId) {
-        TenantDatabase database = requireDatabase(tenantId);
-        DatabaseConnectionResult connection = verifier.verify(database.getDatabaseType(), database.getServerName(), database.getDatabaseName());
+        TenantDatabase database = useSharedDatabase(requireDatabase(tenantId));
+        DatabaseConnectionResult connection = verifier.verify(
+                database.getDatabaseType(), database.getServerName(), SHARED_DATABASE_NAME);
         events.publishEvent(new TenantDatabaseAuditEvent(tenantId, "DATABASE_HEALTH_CHECKED", connection.connected(), LocalDateTime.now()));
         return new TenantDatabaseHealthResponse(tenantId, database.getDatabaseName(), connection,
                 database.getAllocatedStorageGb(), database.getUsedStorageGb(), database.getAvailableStorageGb(),

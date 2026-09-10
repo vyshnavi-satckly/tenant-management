@@ -36,7 +36,7 @@ class TenantDatabaseServiceTests {
         id = UUID.randomUUID();
         tenant = new Tenant(); tenant.setId(id);
         database = new TenantDatabase(); database.setTenant(tenant);
-        database.setDatabaseName("existing_database");
+        database.setDatabaseName("cloud_platform");
         database.setUsedStorageGb(new BigDecimal("10"));
         database.setAllocatedStorageGb(new BigDecimal("20"));
         database.setDatabaseType("POSTGRESQL"); database.setServerName("localhost:5432");
@@ -68,11 +68,11 @@ class TenantDatabaseServiceTests {
         verify(databases, never()).save(any()); verifyNoInteractions(events);
     }
 
-    @Test void savesVerifiedSettingsAndPreservesDatabaseName() {
+    @Test void savesVerifiedSettingsAndUsesSharedDatabaseName() {
         TenantDatabaseResponse response = service.updateDatabase(id, request);
-        assertEquals("existing_database", response.getDatabaseName());
+        assertEquals("cloud_platform", response.getDatabaseName());
         assertEquals(new BigDecimal("5"), response.getAvailableStorageGb());
-        verify(verifier).verify("POSTGRESQL", "localhost:5432", "existing_database");
+        verify(verifier).verify("POSTGRESQL", "localhost:5432", "cloud_platform");
         verify(events).publishEvent(any(TenantDatabaseAuditEvent.class));
     }
 
@@ -81,10 +81,17 @@ class TenantDatabaseServiceTests {
         assertEquals(BigDecimal.ZERO, service.updateDatabase(id, request).getAvailableStorageGb());
     }
 
-    @Test void putInitializesMissingConfigurationWithGeneratedName() {
+    @Test void readNormalizesLegacyDatabaseNameToSharedDatabase() {
+        database.setDatabaseName("legacy_tenant_database");
+        TenantDatabaseResponse response = service.getDatabase(id);
+        assertEquals("cloud_platform", response.getDatabaseName());
+        verify(databases).save(database);
+    }
+
+    @Test void putInitializesMissingConfigurationWithSharedDatabaseName() {
         when(databases.findByTenant_Id(id)).thenReturn(Optional.empty());
         TenantDatabaseResponse response = service.updateDatabase(id, request);
-        assertEquals("tenant_" + id.toString().replace("-", ""), response.getDatabaseName());
+        assertEquals("cloud_platform", response.getDatabaseName());
         assertEquals(BigDecimal.ZERO, response.getUsedStorageGb());
     }
 
@@ -141,7 +148,7 @@ class TenantDatabaseServiceTests {
     @Test void connectionTestUsesCandidateSettingsWithoutSaving() {
         request.setServerName("db.example:5432");
         assertTrue(service.testConnection(id, request).connected());
-        verify(verifier).verify("POSTGRESQL", "db.example:5432", "existing_database");
+        verify(verifier).verify("POSTGRESQL", "db.example:5432", "cloud_platform");
         verify(databases, never()).save(any());
     }
 

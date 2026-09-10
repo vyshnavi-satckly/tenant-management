@@ -6,58 +6,49 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Properties;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.net.URI;
+import javax.sql.DataSource;
 
 @Component
 public class DatabaseConnectionVerifier {
-    private final String username;
-    private final String password;
-    private final Set<String> allowedServers;
+    private final DataSource dataSource;
+    private final String configuredServer;
 
-    public DatabaseConnectionVerifier(
-            @Value("${tenant.database.connection.username:}") String username,
-            @Value("${tenant.database.connection.password:}") String password,
-            @Value("${tenant.database.connection.allowed-servers:localhost:5432}") String allowedServers) {
-        this.username = username;
-        this.password = password;
-        this.allowedServers = Arrays.stream(allowedServers.split(",")).map(String::trim).collect(Collectors.toSet());
+    public DatabaseConnectionVerifier(DataSource dataSource,
+            @Value("${spring.datasource.url}") String datasourceUrl) {
+        this.dataSource = dataSource;
+        this.configuredServer = serverFromJdbcUrl(datasourceUrl);
     }
 
     public void validateTarget(String type, String server) {
         if (type == null || !"POSTGRESQL".equalsIgnoreCase(type.trim()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Supported database type is POSTGRESQL");
-        if (server == null || server.length() > 255
-                || !server.trim().matches("[a-zA-Z0-9.-]+:[0-9]{1,5}")
-                || !allowedServers.contains(server.trim()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Server must be an administrator-approved host:port");
-        int port = Integer.parseInt(server.trim().substring(server.trim().lastIndexOf(':') + 1));
-        if (port < 1 || port > 65535)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid database port");
+        if (server == null || !configuredServer.equalsIgnoreCase(server.trim()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Server must match the configured shared database host:port");
     }
 
     public DatabaseConnectionResult verify(String type, String server, String databaseName) {
         validateTarget(type, server);
         if (databaseName == null || !databaseName.matches("[a-zA-Z_][a-zA-Z0-9_]{0,62}"))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Database name is missing or invalid");
-        if (username.isBlank())
-            return result(false, "Database verification credentials are not configured");
-        Properties properties = new Properties();
-        properties.setProperty("user", username);
-        properties.setProperty("password", password);
-        properties.setProperty("connectTimeout", "5");
-        properties.setProperty("socketTimeout", "5");
-        try (Connection connection = DriverManager.getConnection(
-                "jdbc:postgresql://" + server.trim() + "/" + databaseName, properties)) {
+        try (Connection connection = dataSource.getConnection()) {
             return result(connection.isValid(5), "Connection check completed");
         } catch (SQLException exception) {
-            // SQL exceptions can include infrastructure details; do not expose them to API clients.
-            return result(false, "Unable to connect to the tenant database");
+            return result(false, "Unable to connect to the shared database");
+        }
+    }
+
+    private String serverFromJdbcUrl(String datasourceUrl) {
+        try {
+            URI uri = URI.create(datasourceUrl.substring("jdbc:".length()));
+            if (!"postgresql".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null)
+                throw new IllegalArgumentException();
+            return uri.getHost() + ":" + (uri.getPort() == -1 ? 5432 : uri.getPort());
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("spring.datasource.url must be a PostgreSQL JDBC URL", exception);
         }
     }
 
