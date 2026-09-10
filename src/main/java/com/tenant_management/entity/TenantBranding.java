@@ -1,44 +1,44 @@
 package com.tenant_management.entity;
 
-import com.tenant_management.dto.BrandingRequest;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import lombok.AccessLevel;
+
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.time.Instant;
-import java.util.Locale;
-import java.util.Objects;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "tenant_branding",
-    uniqueConstraints = { @UniqueConstraint(name = "uk_tenant_branding_tenant",columnNames = "tenant_id") })
+@Table(name = "tenant_branding")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class TenantBranding {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "tenant_id",referencedColumnName = "id", nullable = false,
-        updatable = false,unique = true,
-        foreignKey = @ForeignKey(name = "fk_tenant_branding_tenant"))
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "tenant_id",
+            nullable = false,
+            unique = true
+    )
     private Tenant tenant;
 
-    @Column(name = "display_name", nullable = false,length = 100)
+    @Column(name = "display_name", length = 100)
     private String displayName;
 
     @Column(name = "company_tagline", length = 255)
@@ -74,108 +74,15 @@ public class TenantBranding {
     @Column(name = "favicon", length = 500)
     private String favicon;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
-    @Column(name = "created_by",nullable = false,updatable = false )
+    @Column(name = "created_by")
     private UUID createdBy;
 
-    @Column( name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
-    @Column(name = "updated_by",nullable = false)
+    @Column(name = "updated_by")
     private UUID updatedBy;
-
-    public static TenantBranding create( Tenant tenant,UUID actor,BrandingRequest request) {
-    	
-        Objects.requireNonNull(tenant, "Tenant must not be null");
-        Objects.requireNonNull( actor,"Created-by user must not be null");
-
-        Objects.requireNonNull( request, "Branding request must not be null");
-
-        Instant currentTime = Instant.now();
-
-        TenantBranding branding = new TenantBranding();
-        branding.tenant = tenant;
-        branding.createdAt = currentTime;
-        branding.createdBy = actor;
-        branding.updatedAt = currentTime;
-        branding.updatedBy = actor;
-        branding.applyBrandingValues(request);
-
-        return branding;
-    }
-
-    public void update( UUID actor, BrandingRequest request ) {
-    	
-        Objects.requireNonNull( actor, "Updated-by user must not be null" );
-
-        Objects.requireNonNull( request, "Branding request must not be null");
-
-        applyBrandingValues(request);
-        updateAuditFields(actor);
-    }
-
-    public void updateCompanyLogo( String companyLogo, UUID actor) {
-    	
-        Objects.requireNonNull(actor, "Updated-by user must not be null" );
-        this.companyLogo = trimToNull(companyLogo);
-        updateAuditFields(actor);
-    }
-
-    public void updateBackgroundImage(String backgroundImage, UUID actor) {
-    	
-        Objects.requireNonNull(actor,"Updated-by user must not be null");
-        this.backgroundImage = trimToNull(backgroundImage);
-        updateAuditFields(actor);
-    }
-
-    private void applyBrandingValues(BrandingRequest request) {
-    	
-        Objects.requireNonNull( request,"Branding request must not be null");
-
-        this.displayName = request.getDisplayName().trim();
-
-        this.companyTagline = trimToNull(request.getCompanyTagline());
-
-        this.welcomeMessage =trimToNull(request.getWelcomeMessage());
-
-        this.primaryColour = normalizeColour(request.getPrimaryColour());
-
-        this.secondaryColour = normalizeColour(request.getSecondaryColour());
-
-        this.accentColour =normalizeColour(request.getAccentColour());
-
-        this.theme = trimToNull(request.getTheme());
-
-        this.footerText =trimToNull(request.getFooterText());
-
-        this.copyright = trimToNull(request.getCopyright());
-
-        this.favicon =trimToNull(request.getFavicon());
-    }
-    private void updateAuditFields(UUID actor) {
-        this.updatedBy = actor;
-        this.updatedAt = Instant.now();
-    }
-
-    private String normalizeColour(String colour) {
-        String normalizedColour = trimToNull(colour);
-
-        return normalizedColour == null
-            ? null
-            : normalizedColour.toUpperCase(Locale.ROOT);
-    }
-
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String trimmedValue = value.trim();
-
-        return trimmedValue.isEmpty()
-            ? null
-            : trimmedValue;
-    }
 }
