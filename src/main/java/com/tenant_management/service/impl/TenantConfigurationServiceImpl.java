@@ -39,7 +39,7 @@ public class TenantConfigurationServiceImpl
         TenantConfiguration configuration =
                 tenantConfigurationRepository.findByTenantId(tenantId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new TenantConfigurationNotFoundException(
                                         "Tenant configuration not found for tenantId: "
                                                 + tenantId
                                 )
