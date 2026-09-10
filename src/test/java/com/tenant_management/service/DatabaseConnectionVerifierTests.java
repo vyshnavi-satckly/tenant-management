@@ -18,4 +18,5 @@ class DatabaseConnectionVerifierTests {
     @Test void rejectsUnsupportedDatabaseTypes() {
         assertThrows(ResponseStatusException.class, () -> verifier.verify("MYSQL", "localhost:5432", "tenant_test"));
     }
+
 }
