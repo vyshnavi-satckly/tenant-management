@@ -14,7 +14,7 @@ public class TenantDatabase {
     private UUID id;
 
     @OneToOne
-    @JoinColumn(name = "tenant_id", nullable = false)
+    @JoinColumn(name = "tenant_id", nullable = false, unique = true)
     private Tenant tenant;
 
     @Column(name = "database_name", length = 150)
