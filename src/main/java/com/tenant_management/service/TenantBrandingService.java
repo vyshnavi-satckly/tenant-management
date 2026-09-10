@@ -44,7 +44,7 @@ public class TenantBrandingService {
     }
 
     public TenantBrandingResponseDto updateBranding(String tenantId, @Valid TenantBrandingRequestDto request) {
-        TenantBranding branding = getBrandingOrThrow(tenantId);
+        TenantBranding branding = getOrCreateBranding(tenantId);
 
         // This endpoint updates only normal JSON branding fields.
         // It does not update logo or background image.
@@ -141,6 +141,17 @@ public class TenantBrandingService {
                                 "Branding not found for tenant: " + tenantId
                         )
                 );
+    }
+
+    private TenantBranding getOrCreateBranding(String tenantId) {
+        Tenant tenant = getTenantOrThrow(tenantId);
+
+        return tenantBrandingRepository.findByTenant(tenant)
+                .orElseGet(() -> {
+                    TenantBranding branding = new TenantBranding();
+                    branding.setTenant(tenant);
+                    return branding;
+                });
     }
 
 
