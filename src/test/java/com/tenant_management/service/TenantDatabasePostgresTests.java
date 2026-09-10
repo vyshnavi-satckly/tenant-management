@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,7 +18,9 @@ class TenantDatabasePostgresTests {
         String server = System.getenv("TEAM4_TEST_SERVER");
         String user = System.getenv("TEAM4_TEST_USER");
         String password = System.getenv("TEAM4_TEST_PASSWORD");
-        DatabaseConnectionVerifier verifier = new DatabaseConnectionVerifier(user, password, server);
+        DatabaseConnectionVerifier verifier = new DatabaseConnectionVerifier(
+                new DriverManagerDataSource("jdbc:postgresql://" + server + "/" + name, user, password),
+                "jdbc:postgresql://" + server + "/" + name);
         assertTrue(verifier.verify("POSTGRESQL", server, name).connected());
         assertFalse(verifier.verify("POSTGRESQL", server, "missing_" + UUID.randomUUID().toString().replace("-", "")).connected());
     }

@@ -6,7 +6,7 @@ Branch: `team-4-database-suhana`, based on local `team-4-database`.
 
 Reuses member 4A's TenantDatabase entity and request/response DTOs. Adds a tenant-scoped repository lookup and an explicit unique tenant FK for the one-to-one mapping. Existing source files declare the application package, so Spring discovers them despite their directory layout.
 
-Database names are generated as `tenant_<tenant UUID without hyphens>` and never accepted from the request. Existing database names are preserved.
+The backend assigns `cloud_platform` as the shared database name and never accepts a database name from the request. Every tenant receives its own read-only `tenant_databases` configuration record while connection and health checks target the shared database.
 
 ## Day 2 endpoints
 
@@ -36,15 +36,9 @@ The connection test only needs `databaseType` and `serverName`. Every save reche
 
 ## Connection configuration
 
-Supply these Spring properties through deployment configuration or environment variables:
+Team 4 uses Spring Boot's existing `spring.datasource` connection pool for the shared `cloud_platform` database. No separate Team 4 database username, password, or allowed-server settings are required. The request `serverName` must match the host and port in `spring.datasource.url` (for local development, `localhost:5432`). PostgreSQL is the supported type. The verifier uses `Connection.isValid(5)` and never returns raw database errors.
 
-- `tenant.database.connection.username` / `TENANT_DATABASE_CONNECTION_USERNAME`
-- `tenant.database.connection.password` / `TENANT_DATABASE_CONNECTION_PASSWORD`
-- `tenant.database.connection.allowed-servers` / `TENANT_DATABASE_CONNECTION_ALLOWED_SERVERS`: comma-separated approved host:port destinations; defaults to `localhost:5432`.
-
-Credentials remain server-side. PostgreSQL is the supported type, matching the repository's JDBC driver. Connections use five-second connect/socket/validation timeouts. Missing credentials report disconnected; raw SQL errors are not returned.
-
-The physical tenant database must already exist and be accessible with those credentials. These endpoints store provisioning configuration; they do not issue CREATE DATABASE. For new configuration the provisioning process must use the generated name above. Health CPU/memory fields remain null until an external collector records them; storage is recorded metadata, not a live disk measurement.
+Every tenant receives its own configuration row but all connection and health checks target the shared `cloud_platform` database. Health CPU/memory fields remain null until an external collector records them; storage is recorded metadata, not live disk measurement.
 
 ## Shared audit persistence
 
