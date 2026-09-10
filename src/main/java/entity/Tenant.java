@@ -52,13 +52,13 @@ public class Tenant {
     private LocalDateTime createdAt;
 
     @Column(name = "created_by")
-    private UUID createdBy;
+    private String createdBy;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @Column(name = "updated_by")
-    private UUID updatedBy;
+    private String updatedBy;
 
     @Column(name = "is_deleted")
     private Boolean isDeleted = false;
@@ -67,7 +67,7 @@ public class Tenant {
     private LocalDateTime deletedAt;
 
     @Column(name = "deleted_by")
-    private UUID deletedBy;
+    private String deletedBy;
 
     // Getters and Setters
 
@@ -183,11 +183,11 @@ public class Tenant {
         this.createdAt = createdAt;
     }
 
-    public UUID getCreatedBy() {
+    public String getCreatedBy() {
         return createdBy;
     }
 
-    public void setCreatedBy(UUID createdBy) {
+    public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
     }
 
@@ -199,11 +199,11 @@ public class Tenant {
         this.updatedAt = updatedAt;
     }
 
-    public UUID getUpdatedBy() {
+    public String getUpdatedBy() {
         return updatedBy;
     }
 
-    public void setUpdatedBy(UUID updatedBy) {
+    public void setUpdatedBy(String updatedBy) {
         this.updatedBy = updatedBy;
     }
 
@@ -223,11 +223,11 @@ public class Tenant {
         this.deletedAt = deletedAt;
     }
 
-    public UUID getDeletedBy() {
+    public String getDeletedBy() {
         return deletedBy;
     }
 
-    public void setDeletedBy(UUID deletedBy) {
+    public void setDeletedBy(String deletedBy) {
         this.deletedBy = deletedBy;
     }
 }

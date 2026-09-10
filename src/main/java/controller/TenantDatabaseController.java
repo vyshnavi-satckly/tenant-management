@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import com.tenant_management.dto.DatabaseConnectionResult;
+import com.tenant_management.dto.TenantDatabaseHealthResponse;
 
 @RestController
 @RequestMapping("/api/tenants")
@@ -17,6 +19,17 @@ public class TenantDatabaseController {
     public TenantDatabaseController(
             TenantDatabaseService tenantDatabaseService) {
         this.tenantDatabaseService = tenantDatabaseService;
+    }
+
+    @PostMapping("/{tenantId}/database/test-connection")
+    public DatabaseConnectionResult testConnection(@PathVariable UUID tenantId,
+            @RequestBody TenantDatabaseRequest request) {
+        return tenantDatabaseService.testConnection(tenantId, request);
+    }
+
+    @GetMapping("/{tenantId}/database/health")
+    public TenantDatabaseHealthResponse health(@PathVariable UUID tenantId) {
+        return tenantDatabaseService.getHealth(tenantId);
     }
 
     // CREATE database details
