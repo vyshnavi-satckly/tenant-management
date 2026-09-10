@@ -31,7 +31,7 @@ public class TenantController {
     @GetMapping("/export") public ResponseEntity<List<Tenant>> export(){
         return ResponseEntity.ok(service.exportTenants());
     }
-    // Team 1A APIs for testing - you can keep
+    // Team 1A APIs for testing
     @GetMapping public ResponseEntity<List<Tenant>> getAll(){return ResponseEntity.ok(service.getAllTenants());}
     @GetMapping("/{tenantId}") public ResponseEntity<Tenant> getOne(@PathVariable String tenantId){return ResponseEntity.ok(service.getTenantById(tenantId));}
 }

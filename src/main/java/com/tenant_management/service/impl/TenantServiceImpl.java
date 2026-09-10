@@ -2,10 +2,13 @@ package com.tenant_management.service.impl;
 
 import com.tenant_management.dto.request.CreateTenantRequest;
 import com.tenant_management.dto.request.UpdateTenantRequest;
+import com.tenant_management.entity.AuditLog;
 import com.tenant_management.entity.Tenant;
+import com.tenant_management.repository.AuditLogRepository;
 import com.tenant_management.repository.TenantRepository;
 import com.tenant_management.service.TenantService;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -14,7 +17,25 @@ import java.util.UUID;
 public class TenantServiceImpl implements TenantService {
 
     private final TenantRepository repo;
-    public TenantServiceImpl(TenantRepository repo){this.repo=repo;}
+    private final AuditLogRepository auditRepo;
+
+    public TenantServiceImpl(TenantRepository repo, AuditLogRepository auditRepo){
+        this.repo=repo;
+        this.auditRepo=auditRepo;
+    }
+
+    private void saveAudit(String entityId, String action, String status) {
+        AuditLog log = new AuditLog();
+        log.setId(UUID.randomUUID());
+        log.setEntity("tenants");
+        log.setEntityId(entityId);
+        log.setAction(action);
+        log.setModule("tenant-management");
+        log.setStatus(status);
+        log.setAuditTimestamp(LocalDate.now());
+        // user_id can be null for now
+        auditRepo.save(log);
+    }
 
     @Override
     public Tenant createTenant(CreateTenantRequest req){
@@ -36,7 +57,9 @@ public class TenantServiceImpl implements TenantService {
         t.setCreatedAt(LocalDateTime.now());
         t.setUpdatedAt(LocalDateTime.now());
         t.setIsDeleted(false);
-        return repo.save(t);
+        Tenant saved = repo.save(t);
+        saveAudit(saved.getTenantId(), "CREATE", saved.getStatus());
+        return saved;
     }
 
     @Override public Tenant updateTenant(String tenantId, UpdateTenantRequest req){
@@ -51,17 +74,27 @@ public class TenantServiceImpl implements TenantService {
         if(req.getTimeZone()!=null) t.setTimeZone(req.getTimeZone());
         if(req.getLanguage()!=null) t.setLanguage(req.getLanguage());
         t.setUpdatedAt(LocalDateTime.now());
-        return repo.save(t);
+        Tenant saved = repo.save(t);
+        saveAudit(saved.getTenantId(), "UPDATE", saved.getStatus());
+        return saved;
     }
 
     @Override public Tenant enableTenant(String tenantId){
         Tenant t = repo.findByTenantId(tenantId).orElseThrow();
-        t.setStatus("ACTIVE"); t.setUpdatedAt(LocalDateTime.now()); return repo.save(t);
+        t.setStatus("ACTIVE"); t.setUpdatedAt(LocalDateTime.now());
+        Tenant saved = repo.save(t);
+        saveAudit(saved.getTenantId(), "ENABLE", "ACTIVE");
+        return saved;
     }
+
     @Override public Tenant disableTenant(String tenantId){
         Tenant t = repo.findByTenantId(tenantId).orElseThrow();
-        t.setStatus("INACTIVE"); t.setUpdatedAt(LocalDateTime.now()); return repo.save(t);
+        t.setStatus("INACTIVE"); t.setUpdatedAt(LocalDateTime.now());
+        Tenant saved = repo.save(t);
+        saveAudit(saved.getTenantId(), "DISABLE", "INACTIVE");
+        return saved;
     }
+
     @Override public List<Tenant> exportTenants(){return repo.findByIsDeletedFalse();}
     @Override public List<Tenant> getAllTenants(){return repo.findByIsDeletedFalse();}
     @Override public Tenant getTenantById(String tenantId){return repo.findByTenantId(tenantId).orElseThrow();}
