@@ -39,7 +39,7 @@ class TenantDatabasePostgresTests {
                         "Audit integration requires an existing users row for the foreign key");
                 UUID actor = actors.getFirst();
                 UUID entity = UUID.randomUUID();
-                new TenantDatabaseAuditListener(jdbc, actor.toString()).record(
+                new TenantDatabaseAuditListener(jdbc).record(
                         new TenantDatabaseAuditEvent(entity, "DATABASE_CONNECTION_TESTED", true, LocalDateTime.now()));
                 assertEquals(1, jdbc.queryForObject(
                         "SELECT count(*) FROM audit_logs WHERE entity_id = ? AND user_id = ? AND status = 'SUCCESS'",

@@ -2,6 +2,7 @@ package com.tenant_management.service;
 
 import java.sql.Date;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -21,8 +22,10 @@ class TenantDatabaseAuditListenerTests {
 
     @AfterEach void cleanup() { SecurityContextHolder.clearContext(); }
 
-    @Test void persistsToSharedTableUsingConfiguredSystemActor() {
-        new TenantDatabaseAuditListener(jdbc, actor.toString()).record(event);
+    @Test void persistsToSharedTableUsingActiveTenantUser() {
+        when(jdbc.queryForList(contains("FROM users"), eq(UUID.class), eq(event.tenantId())))
+                .thenReturn(List.of(actor));
+        new TenantDatabaseAuditListener(jdbc).record(event);
         verify(jdbc).update(contains("INSERT INTO audit_logs"), any(UUID.class), eq(actor),
                 eq("DATABASE_UPDATED"), eq("TENANT_MANAGEMENT"), eq("TenantDatabase"),
                 eq(event.tenantId().toString()), eq("SUCCESS"), eq(Date.valueOf(event.occurredAt().toLocalDate())));
@@ -31,7 +34,7 @@ class TenantDatabaseAuditListenerTests {
     @Test void authenticatedActorTakesPrecedenceAndFailedCheckIsRecorded() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(actor.toString(), "", java.util.List.of()));
-        new TenantDatabaseAuditListener(jdbc, UUID.randomUUID().toString()).record(
+        new TenantDatabaseAuditListener(jdbc).record(
                 new TenantDatabaseAuditEvent(event.tenantId(), "DATABASE_CONNECTION_TESTED", false, event.occurredAt()));
         verify(jdbc).update(anyString(), any(UUID.class), eq(actor), eq("DATABASE_CONNECTION_TESTED"),
                 eq("TENANT_MANAGEMENT"), eq("TenantDatabase"), eq(event.tenantId().toString()),
@@ -39,15 +42,19 @@ class TenantDatabaseAuditListenerTests {
     }
 
     @Test void missingActorDoesNotSilentlyDropAudit() {
+        when(jdbc.queryForList(contains("FROM users"), eq(UUID.class), eq(event.tenantId())))
+                .thenReturn(List.of());
         assertEquals(503, assertThrows(ResponseStatusException.class,
-                () -> new TenantDatabaseAuditListener(jdbc, "").record(event)).getStatusCode().value());
-        verifyNoInteractions(jdbc);
+                () -> new TenantDatabaseAuditListener(jdbc).record(event)).getStatusCode().value());
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
 
     @Test void persistenceFailurePropagatesToRollbackConfigurationSave() {
+        when(jdbc.queryForList(contains("FROM users"), eq(UUID.class), eq(event.tenantId())))
+                .thenReturn(List.of(actor));
         doThrow(new org.springframework.dao.DataIntegrityViolationException("Unknown user"))
                 .when(jdbc).update(anyString(), any(Object[].class));
         assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
-                () -> new TenantDatabaseAuditListener(jdbc, actor.toString()).record(event));
+                () -> new TenantDatabaseAuditListener(jdbc).record(event));
     }
 }
