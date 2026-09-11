@@ -5,6 +5,7 @@ import com.tenant_management.dto.response.TenantBrandingFileUploadResponseDto;
 import com.tenant_management.dto.response.TenantBrandingPreviewResponseDto;
 import com.tenant_management.dto.response.TenantBrandingResponseDto;
 import com.tenant_management.service.TenantBrandingService;
+import com.tenant_management.service.TenantBrandingServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
