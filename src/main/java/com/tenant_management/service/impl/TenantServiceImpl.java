@@ -2,6 +2,7 @@ package com.tenant_management.service.impl;
 
 import com.tenant_management.dto.request.CreateTenantRequest;
 import com.tenant_management.dto.request.UpdateTenantRequest;
+import com.tenant_management.dto.response.TenantResponse;
 import com.tenant_management.entity.AuditLog;
 import com.tenant_management.entity.Tenant;
 import com.tenant_management.repository.AuditLogRepository;
@@ -10,8 +11,11 @@ import com.tenant_management.service.TenantService;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TenantServiceImpl implements TenantService {
@@ -33,8 +37,24 @@ public class TenantServiceImpl implements TenantService {
         log.setModule("tenant-management");
         log.setStatus(status);
         log.setAuditTimestamp(LocalDate.now());
-        // user_id can be null for now
         auditRepo.save(log);
+    }
+
+    // Helper to convert Entity to Response DTO for 1A
+    private TenantResponse mapToResponse(Tenant t) {
+        TenantResponse r = new TenantResponse();
+        r.setId(t.getId());
+        r.setTenantId(t.getTenantId());
+        r.setTenantName(t.getTenantName());
+        r.setOrganizationName(t.getOrganizationName());
+        r.setDomainName(t.getDomainName());
+        r.setSubscriptionPlan(t.getSubscriptionPlan());
+        r.setStatus(t.getStatus());
+        r.setPrimaryAdminName(t.getPrimaryAdminName());
+        r.setPrimaryAdminEmail(t.getPrimaryAdminEmail());
+        r.setCountry(t.getCountry());
+        r.setCreatedAt(t.getCreatedAt());
+        return r;
     }
 
     @Override
@@ -98,4 +118,31 @@ public class TenantServiceImpl implements TenantService {
     @Override public List<Tenant> exportTenants(){return repo.findByIsDeletedFalse();}
     @Override public List<Tenant> getAllTenants(){return repo.findByIsDeletedFalse();}
     @Override public Tenant getTenantById(String tenantId){return repo.findByTenantId(tenantId).orElseThrow();}
+
+    // ===== TEAM 1A - APIS =====
+    @Override
+    public List<TenantResponse> searchTenants(String keyword) {
+        List<Tenant> tenants = repo.searchTenants(keyword);
+        return tenants.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TenantResponse> filterTenants(String status, String subscriptionPlan, String country) {
+        // If all null, return all
+        if(status == null && subscriptionPlan == null && country == null){
+            return repo.findByIsDeletedFalse().stream().map(this::mapToResponse).collect(Collectors.toList());
+        }
+        List<Tenant> tenants = repo.filterTenants(status, subscriptionPlan, country);
+        return tenants.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<String, Object> getOverview() {
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("totalTenants", repo.countByIsDeletedFalse());
+        overview.put("activeTenants", repo.countByStatusAndIsDeletedFalse("ACTIVE"));
+        overview.put("inactiveTenants", repo.countByStatusAndIsDeletedFalse("INACTIVE"));
+        overview.put("total", repo.count());
+        return overview;
+    }
 }
