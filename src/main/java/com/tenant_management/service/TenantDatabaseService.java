@@ -205,68 +205,26 @@ public class TenantDatabaseService {
         return users.getFirst();
     }
 
-    // Convert Entity to Response DTO
-    private TenantDatabaseResponse convertToResponse(
-            TenantDatabase database) {
-
-        TenantDatabaseResponse response =
-                new TenantDatabaseResponse();
-
+    private TenantDatabaseResponse convertToResponse(TenantDatabase database) {
+        TenantDatabaseResponse response = new TenantDatabaseResponse();
         response.setId(database.getId());
-
-        if (database.getTenant() != null) {
-            response.setTenantId(
-                    database.getTenant().getId());
-        }
-
-        response.setDatabaseName(
-                database.getDatabaseName());
-
-        response.setDatabaseType(
-                database.getDatabaseType());
-
-        response.setServerName(
-                database.getServerName());
-
-        response.setConnectionStatus(
-                database.getConnectionStatus());
-
-        response.setAllocatedStorageGb(
-                database.getAllocatedStorageGb());
-
-        response.setUsedStorageGb(
-                database.getUsedStorageGb());
-
-        response.setAvailableStorageGb(
-                database.getAvailableStorageGb());
-
-        response.setCpuUsage(
-                database.getCpuUsage());
-
-        response.setMemoryUsage(
-                database.getMemoryUsage());
-
-        response.setLastBackup(
-                database.getLastBackup());
-
-        response.setAutoBackupEnabled(
-                database.getAutoBackupEnabled());
-
-        response.setMaintenanceWindow(
-                database.getMaintenanceWindow());
-
-        response.setCreatedAt(
-                database.getCreatedAt());
-
-        response.setCreatedBy(
-                database.getCreatedBy());
-
-        response.setUpdatedAt(
-                database.getUpdatedAt());
-
-        response.setUpdatedBy(
-                database.getUpdatedBy());
-
+        response.setTenantId(database.getTenant() == null ? null : database.getTenant().getId());
+        response.setDatabaseName(database.getDatabaseName());
+        response.setDatabaseType(database.getDatabaseType());
+        response.setServerName(database.getServerName());
+        response.setConnectionStatus(database.getConnectionStatus());
+        response.setAllocatedStorageGb(database.getAllocatedStorageGb());
+        response.setUsedStorageGb(database.getUsedStorageGb());
+        response.setAvailableStorageGb(database.getAvailableStorageGb());
+        response.setCpuUsage(database.getCpuUsage());
+        response.setMemoryUsage(database.getMemoryUsage());
+        response.setLastBackup(database.getLastBackup());
+        response.setAutoBackupEnabled(database.getAutoBackupEnabled());
+        response.setMaintenanceWindow(database.getMaintenanceWindow());
+        response.setCreatedAt(database.getCreatedAt());
+        response.setCreatedBy(database.getCreatedBy());
+        response.setUpdatedAt(database.getUpdatedAt());
+        response.setUpdatedBy(database.getUpdatedBy());
         return response;
     }
 }
