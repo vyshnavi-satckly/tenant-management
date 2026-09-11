@@ -30,11 +30,15 @@ public class TenantBrandingService {
     private static final Set<String> LOGO_CONTENT_TYPES = Set.of(
             "image/png",
             "image/jpeg",
+            "image/jpg",
+            "application/octet-stream",
             "image/svg+xml"
     );
 
     private static final Set<String> BACKGROUND_CONTENT_TYPES = Set.of(
             "image/png",
+            "application/octet-stream",
+            "image/jpg",
             "image/jpeg"
     );
 
@@ -67,7 +71,7 @@ public class TenantBrandingService {
 
     public TenantBrandingFileUploadResponseDto uploadLogo(String tenantId, MultipartFile logo) {
         TenantBranding branding = getBrandingOrThrow(tenantId);
-
+        System.out.println(logo.getContentType());
         validateFile(logo, MAX_LOGO_SIZE,LOGO_CONTENT_TYPES, "Logo");
 
         String logoUrl = fileStorageService.store(
