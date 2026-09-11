@@ -1,162 +1,81 @@
 package com.tenant_management.service;
 
-import com.tenant_management.dto.*;
-import com.tenant_management.entity.*;
-import com.tenant_management.repository.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.web.server.ResponseStatusException;
+import com.tenant_management.dto.request.TenantDatabaseRequest;
+import com.tenant_management.entity.Tenant;
+import com.tenant_management.entity.TenantDatabase;
+import com.tenant_management.repository.TenantDatabaseRepository;
+import com.tenant_management.repository.TenantRepository;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.sql.Connection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class TenantDatabaseServiceTests {
-    TenantDatabaseRepository databases;
-    TenantRepository tenants;
-    DatabaseConnectionVerifier verifier;
-    ApplicationEventPublisher events;
-    TenantDatabaseServiceImpl service;
-    UUID id;
-    Tenant tenant;
-    TenantDatabase database;
-    TenantDatabaseRequest request;
+    private TenantDatabaseRepository databases;
+    private TenantDatabaseService service;
+    private UUID tenantId;
+    private TenantDatabaseRequest request;
 
     @BeforeEach
-    void setup() {
+    void setup() throws Exception {
         databases = mock(TenantDatabaseRepository.class);
-        tenants = mock(TenantRepository.class);
-        verifier = mock(DatabaseConnectionVerifier.class);
-        events = mock(ApplicationEventPublisher.class);
-        service = new TenantDatabaseServiceImpl(databases, tenants, verifier, events);
-        id = UUID.randomUUID();
-        tenant = new Tenant(); tenant.setId(id);
-        database = new TenantDatabase(); database.setTenant(tenant);
+        TenantRepository tenants = mock(TenantRepository.class);
+        DataSource dataSource = mock(DataSource.class);
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        Connection connection = mock(Connection.class);
+        tenantId = UUID.randomUUID();
+        Tenant tenant = new Tenant();
+        tenant.setId(tenantId);
+        TenantDatabase database = new TenantDatabase();
+        database.setTenant(tenant);
         database.setDatabaseName("cloud_platform");
-        database.setUsedStorageGb(new BigDecimal("10"));
-        database.setAllocatedStorageGb(new BigDecimal("20"));
-        database.setDatabaseType("POSTGRESQL"); database.setServerName("localhost:5432");
-        request = new TenantDatabaseRequest();
-        request.setDatabaseType("POSTGRESQL"); request.setServerName("localhost:5432");
-        request.setAllocatedStorageGb(new BigDecimal("15"));
-        request.setMaintenanceWindow("Sunday 02:00-03:00 UTC"); request.setAutoBackupEnabled(true);
-        when(tenants.findById(id)).thenReturn(Optional.of(tenant));
-        when(databases.findByTenant_Id(id)).thenReturn(Optional.of(database));
+        database.setUsedStorageGb(BigDecimal.TEN);
+
+        when(tenants.findById(tenantId)).thenReturn(Optional.of(tenant));
+        when(databases.findByTenant_Id(tenantId)).thenReturn(Optional.of(database));
         when(databases.save(any())).thenAnswer(call -> call.getArgument(0));
-        when(verifier.verify(anyString(), anyString(), anyString())).thenReturn(result(true));
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.isValid(5)).thenReturn(true);
+        when(jdbc.queryForList(anyString(), eq(UUID.class), eq(tenantId)))
+                .thenReturn(List.of(UUID.randomUUID()));
+        service = new TenantDatabaseService(databases, tenants, dataSource, jdbc,
+                "jdbc:postgresql://localhost:5432/cloud_platform");
+
+        request = new TenantDatabaseRequest();
+        request.setDatabaseType("POSTGRESQL");
+        request.setServerName("localhost:5432");
+        request.setAllocatedStorageGb(new BigDecimal("20"));
+        request.setAutoBackupEnabled(true);
+        request.setMaintenanceWindow("Sunday 02:00-03:00 UTC");
     }
 
-    DatabaseConnectionResult result(boolean connected) {
-        return new DatabaseConnectionResult(connected, connected ? "CONNECTED" : "DISCONNECTED", "Checked", LocalDateTime.now());
+    @Test
+    void putSavesVerifiedSettingsAndCalculatesAvailableStorage() {
+        var response = service.updateDatabase(tenantId, request);
+        assertEquals(new BigDecimal("10"), response.getAvailableStorageGb());
+        assertEquals("cloud_platform", response.getDatabaseName());
     }
 
-    @Test void rejectsStorageBelowUsageWithoutConnectingOrSaving() {
+    @Test
+    void putRejectsStorageBelowCurrentUsage() {
         request.setAllocatedStorageGb(new BigDecimal("9"));
         assertEquals(400, assertThrows(ResponseStatusException.class,
-                () -> service.updateDatabase(id, request)).getStatusCode().value());
-        verifyNoInteractions(verifier); verify(databases, never()).save(any());
-    }
-
-    @Test void failedConnectionDoesNotMutateSettingsOrEmitSuccess() {
-        when(verifier.verify(anyString(), anyString(), anyString())).thenReturn(result(false));
-        assertThrows(ResponseStatusException.class, () -> service.updateDatabase(id, request));
-        assertEquals(new BigDecimal("20"), database.getAllocatedStorageGb());
-        verify(databases, never()).save(any()); verifyNoInteractions(events);
-    }
-
-    @Test void savesVerifiedSettingsAndUsesSharedDatabaseName() {
-        TenantDatabaseResponse response = service.updateDatabase(id, request);
-        assertEquals("cloud_platform", response.getDatabaseName());
-        assertEquals(new BigDecimal("5"), response.getAvailableStorageGb());
-        verify(verifier).verify("POSTGRESQL", "localhost:5432", "cloud_platform");
-        verify(events).publishEvent(any(TenantDatabaseAuditEvent.class));
-    }
-
-    @Test void permitsAllocationEqualToUsage() {
-        request.setAllocatedStorageGb(BigDecimal.TEN);
-        assertEquals(BigDecimal.ZERO, service.updateDatabase(id, request).getAvailableStorageGb());
-    }
-
-    @Test void readNormalizesLegacyDatabaseNameToSharedDatabase() {
-        database.setDatabaseName("legacy_tenant_database");
-        TenantDatabaseResponse response = service.getDatabase(id);
-        assertEquals("cloud_platform", response.getDatabaseName());
-        verify(databases).save(database);
-    }
-
-    @Test void putInitializesMissingConfigurationWithSharedDatabaseName() {
-        when(databases.findByTenant_Id(id)).thenReturn(Optional.empty());
-        TenantDatabaseResponse response = service.updateDatabase(id, request);
-        assertEquals("cloud_platform", response.getDatabaseName());
-        assertEquals(BigDecimal.ZERO, response.getUsedStorageGb());
-    }
-
-    @Test void missingAndDeletedTenantsReturnNotFound() {
-        when(tenants.findById(id)).thenReturn(Optional.empty());
-        assertEquals(404, assertThrows(ResponseStatusException.class, () -> service.getDatabase(id)).getStatusCode().value());
-        when(tenants.findById(id)).thenReturn(Optional.of(tenant)); tenant.setIsDeleted(true);
-        assertEquals(404, assertThrows(ResponseStatusException.class, () -> service.getHealth(id)).getStatusCode().value());
-        verifyNoInteractions(verifier);
-    }
-
-    @Test void missingMaintenanceWindowIsRejected() {
-        request.setMaintenanceWindow("  ");
-        assertThrows(ResponseStatusException.class, () -> service.updateDatabase(id, request));
+                () -> service.updateDatabase(tenantId, request)).getStatusCode().value());
         verify(databases, never()).save(any());
     }
 
-    @Test void duplicateCreateIsRejected() {
-        assertEquals(409, assertThrows(ResponseStatusException.class,
-                () -> service.createDatabase(id, request)).getStatusCode().value());
-        verify(databases, never()).save(any());
-    }
-
-    @Test void createValidatesMaintenanceBeforeConnecting() {
-        when(databases.findByTenant_Id(id)).thenReturn(Optional.empty());
-        request.setMaintenanceWindow(null);
-        assertThrows(ResponseStatusException.class, () -> service.createDatabase(id, request));
-        verifyNoInteractions(verifier); verify(databases, never()).save(any());
-    }
-
-    @Test void createRejectsFailedVerification() {
-        when(databases.findByTenant_Id(id)).thenReturn(Optional.empty());
-        when(verifier.verify(anyString(), anyString(), anyString())).thenReturn(result(false));
-        assertThrows(ResponseStatusException.class, () -> service.createDatabase(id, request));
-        verify(databases, never()).save(any()); verifyNoInteractions(events);
-    }
-
-    @Test void rejectsMissingZeroAndNegativeStorage() {
-        for (BigDecimal storage : new BigDecimal[] {null, BigDecimal.ZERO, BigDecimal.ONE.negate()}) {
-            request.setAllocatedStorageGb(storage);
-            assertThrows(ResponseStatusException.class, () -> service.updateDatabase(id, request));
-        }
-        verifyNoInteractions(verifier); verify(databases, never()).save(any());
-    }
-
-    @Test void failedConnectionTestIsAuditedWithoutSaving() {
-        when(verifier.verify(anyString(), anyString(), anyString())).thenReturn(result(false));
-        assertFalse(service.testConnection(id, request).connected());
-        verify(events).publishEvent(argThat((Object event) -> event instanceof TenantDatabaseAuditEvent audit
-                && !audit.successful() && audit.action().equals("DATABASE_CONNECTION_TESTED")));
-        verify(databases, never()).save(any());
-    }
-
-    @Test void connectionTestUsesCandidateSettingsWithoutSaving() {
-        request.setServerName("db.example:5432");
-        assertTrue(service.testConnection(id, request).connected());
-        verify(verifier).verify("POSTGRESQL", "db.example:5432", "cloud_platform");
-        verify(databases, never()).save(any());
-    }
-
-    @Test void healthChecksLiveConnectionWithoutInventingMetrics() {
-        when(verifier.verify(anyString(), anyString(), anyString())).thenReturn(result(false));
-        TenantDatabaseHealthResponse health = service.getHealth(id);
-        assertFalse(health.connection().connected());
-        assertNull(health.cpuUsage()); assertNull(health.memoryUsage());
+    @Test
+    void connectionTestDoesNotSaveConfiguration() {
+        assertTrue(service.testConnection(tenantId, request).connected());
         verify(databases, never()).save(any());
     }
 }

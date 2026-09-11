@@ -1,4 +1,4 @@
-package com.tenant_management.dto;
+package com.tenant_management.dto.request;
 
 import java.math.BigDecimal;
 
