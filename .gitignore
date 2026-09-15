@@ -32,7 +32,4 @@ build/
 ### VS Code ###
 .vscode/
 
-# Local developer configuration and credentials
-.env
-.env.*
-!.env.example
+src/main/resources/application-local.properties
