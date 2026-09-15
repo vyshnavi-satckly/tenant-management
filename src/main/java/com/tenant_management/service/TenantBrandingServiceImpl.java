@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.tika.Tika;
 
 import java.util.Set;
 
@@ -31,13 +32,11 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
             "image/png",
             "image/jpeg",
             "image/jpg",
-            "application/octet-stream",
             "image/svg+xml"
     );
 
     private static final Set<String> BACKGROUND_CONTENT_TYPES = Set.of(
             "image/png",
-            "application/octet-stream",
             "image/jpg",
             "image/jpeg"
     );
@@ -73,7 +72,6 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
     @Override
     public TenantBrandingFileUploadResponseDto uploadLogo(String tenantId, MultipartFile logo) {
         TenantBranding branding = getBrandingOrThrow(tenantId);
-        System.out.println(logo.getContentType());
         validateFile(logo, MAX_LOGO_SIZE,LOGO_CONTENT_TYPES, "Logo");
 
         String logoUrl = fileStorageService.store(
@@ -92,7 +90,6 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
     @Override
     public TenantBrandingFileUploadResponseDto uploadBackground(String tenantId, MultipartFile background) {
         TenantBranding branding = getBrandingOrThrow(tenantId);
-
         validateFile(
                 background,
                 MAX_BACKGROUND_SIZE,
@@ -198,11 +195,18 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
                     fileLabel + " exceeds maximum allowed size"
             );
         }
+        try{
 
-        String contentType = file.getContentType();
+       // String contentType = file.getContentType(); relied on client data
+        Tika tika = new Tika();
+        // server is verifying image type
+        String contentType= tika.detect(file.getInputStream());
 
         if (contentType == null || !allowedTypes.contains(contentType)) {
             throw new RuntimeException("Invalid " + fileLabel + " file type");
+        }
+        }catch(Exception e){
+            throw new RuntimeException(fileLabel + " file could not be read",e);
         }
     }
 
