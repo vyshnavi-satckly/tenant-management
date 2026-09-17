@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/tenants")
+@RequestMapping("/tenants")
 @RequiredArgsConstructor
 public class TenantBackupController {
 

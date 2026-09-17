@@ -19,7 +19,7 @@ import com.tenant_management.service.TenantIsolationService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/tenants")
+@RequestMapping("/tenants")
 public class TenantIsolationController {
 
 

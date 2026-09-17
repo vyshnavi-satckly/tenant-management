@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/tenants/{tenantId}/branding")
+@RequestMapping("/tenants/{tenantId}/branding")
 @RequiredArgsConstructor
 public class TenantBrandingController {
 

@@ -30,7 +30,7 @@ public class TenantBranding {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne
     @JoinColumn(
             name = "tenant_id",
             nullable = false,

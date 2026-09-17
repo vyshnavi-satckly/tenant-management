@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/tenants")
+@RequestMapping("/tenants")
 public class TenantController {
 
     private final TenantService service;
